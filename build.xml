@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="PRJNAME" default="verify" basedir=".">
+    <!-- Import project specific settings -->
+    <property file="build.properties" />
+
+    <!-- Import the build commons framework -->
+    <import file="setup/src/main/xml/base.xml" />
+
+    <!--{{{ VALIDATE TARGET -->
+    <target name="-mm-clean" extensionOf="-clean:after~hook">
+        <delete dir="${project.dir}/.abc_cache" />
+        <delete dir="${project.dir}/.npm/" />
+        <delete dir="${commons.srcdir}/.sass-cache/" />
+        <delete dir="${commons.srcdir}/webapp/images/" />
+        <delete dir="${commons.srcdir}/webapp/stylesheets/" />
+        <delete dir="${commons.srcdir}/webapp/javascripts/" />
+    </target>
+
+    <!--{{{ VALIDATE TARGET -->
+    <target name="-mm-validate-before" extensionOf="-validate:before~hook">
+        <!-- no need to init compass
+        <exec dir="${commons.srcdir}/sass"
+              executable="${commons.executable.compass}" >
+            <arg value="init"/>
+        </exec>
+        -->
+    </target>
+    <target name="-mm-validate" extensionOf="-validate:main~hook">
+        <echo>VALIDATE THE PRJ</echo>
+        <exec dir="${commons.srcdir}/sass"
+              executable="${commons.executable.compass}" >
+            <arg value="validate"/>
+        </exec>
+    </target>
+
+    <!--{{{ COMPILE TARGET -->
+    <target name="-mm-compile" extensionOf="-compile:main~hook">
+        <echo>COMPILE THE PRJ</echo>
+        <exec dir="${commons.srcdir}/sass"
+              executable="${commons.executable.compass}" >
+            <arg value="compile"/>
+        </exec>
+    </target>
+
+    <target name="-mm-bundle" extensionOf="-bundle:main~hook">
+        <copy toDir="${commons:bundledir}/webapp">
+            <fileset dir="${commons:bundledir}/source/resources"/>
+            <fileset dir="${commons:bundledir}/source/webapp" />
+        </copy>
+        <copy toDir="${commons:bundledir}/webapp/javascripts">
+            <fileset dir="${commons:bundledir}/source/js"/>
+        </copy>
+
+        <zip destfile="${commons:builddir}/${project.name}-${project.version}-${project.stability}.zip"
+             basedir="${commons:bundledir}/webapp"
+             update="true"
+        />
+    </target>
+
+    <target name="-mm-package" extensionOf="">
+    </target>
+
+    <!--{{{ RUN TARGET -->
+    <target name="run"
+            depends="bundle,
+                     -run:before~hook,
+                     -run:after~hook"
+             description="->  run local PHP Webserver (needs PHP >= 5.4)">
+        <echo>RUN local Webserver on http://${run.php.host}:${run.php.port} for bundled application, press CTRL-C to stop</echo>
+        <echo>hint: start {{ant rundev}} if dev mode is needed</echo>
+        <!--exec dir="${commons.basedir}/${commons.builddir.name}"-->
+        <exec dir="${commons:bundledir}/webapp"
+              spawn="false"
+              executable="${commons.executable.php}" >
+            <arg value="-S"/>
+            <arg value="${run.php.host}:${run.php.port}"/>
+        </exec>
+
+    </target>
+    <extension-point name="-run:before~hook" />
+    <extension-point name="-run:after~hook" />
+    <!-- END OF RUN TARGET }}}-->
+
+    <!--{{{ RUN DEV TARGET -->
+    <target name="rundev"
+            depends="-rundev:before~hook,
+                     -rundev:after~hook"
+             description="->  run local PHP Webserver (needs PHP >= 5.4) and compass in development mode">
+        <echo>RUN local Webserver on http://${run.php.host}:${run.php.port} in DEV mode, press CTRL-C to stop</echo>
+        <exec dir="${commons.srcdir}/sass"
+              spawn="true"
+              executable="${commons.executable.compass}" >
+            <arg value="watch"/>
+        </exec>
+        <!--exec dir="${commons.basedir}/${commons.builddir.name}"-->
+        <exec dir="${commons:bundledir}/webapp"
+              spawn="false"
+              executable="${commons.executable.php}" >
+            <arg value="-S"/>
+            <arg value="${run.php.host}:${run.php.port}"/>
+        </exec>
+
+    </target>
+    <extension-point name="-rundev:before~hook" />
+    <extension-point name="-rundev:after~hook" />
+    <!-- END OF RUN TARGET }}}-->
+
+    <!--{{{ DEPLOY TARGET -->
+    <target name="-mm-deploy-before" extensionOf="-deploy:before~hook" />
+    <target name="-mm-deploy-main" extensionOf="-deploy:main~hook">
+        <exec executable="/bin/sh"
+              failonerror="true">
+            <arg line ="-c &quot;${remote.executable.scp} -r -i ${project.dir}/.ssh/id_rsa.nopass ${commons:bundledir}/webapp/* ${remote.shell.credentials}:${remote.server.path}&quot;"/>
+        </exec>
+        <!--
+        <exec executable="${remote.executable.scp}" >
+            <arg value="-r"/>
+            <arg value="-i${project.dir}/.ssh/id_rsa.nopass"/>
+            <arg value="${commons:bundledir}/webapp"/>
+            <arg value="${remote.shell.credentials}:${remote.server.path}"/>
+        </exec>
+        -->
+        <!--
+        <scp file="${commons:bundledir}/webapp/\*"
+            keyfile="${project.dir}/.ssh/id_rsa.nopass"
+            todir="${remote.shell.credentials}:${remote.server.path}"/>
+        -->
+    </target>
+    <target name="-mm-deploy-after" extensionOf="-deploy:after~hook" />
+    <!-- END OF DEPLOY TARGET }}}-->
+</project>
